@@ -1,0 +1,27 @@
+server {
+    listen ${EXTERNAL_PORT};
+    server_name ${SERVER_NAME};
+
+    location / {
+        proxy_pass http://app:4200/;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+server {
+    server_name strapi.commerce.net;
+    listen 80;
+
+    location / {
+        proxy_pass http://api:1337/;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        proxy_cache_bypass $http_upgrade;
+    }
+}

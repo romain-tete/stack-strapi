@@ -1,0 +1,66 @@
+version: "3.8"
+
+x-service-defaults: &service_defaults
+  env_file: .env
+  restart: on-failure
+
+x-node-defaults: &node_defaults
+  image: node:lts-alpine
+  working_dir: /home/node/app
+  entrypoint: "/var/scripts/node-entrypoint.sh"
+
+secrets:
+  postgres_root_password: 
+    file: "./secrets/postgres_root_password"
+  strapi_database_username:
+    file: "./secrets/strapi_database_user"
+  strapi_database_password:
+    file: "./secrets/strapi_database_password"
+
+volumes:
+  postgres-data:
+
+services:
+  postgres:
+    <<: *service_defaults
+    image: postgres:13-alpine
+    ports: ["5432"]
+    volumes: 
+      - "postgres-data:/var/lib/postgresql/data"
+    secrets:
+      - postgres_root_password
+    environment:
+      POSTGRES_PASSWORD_FILE: "/run/secrets/postgres_root_password"
+
+  gateway:
+    <<: *service_defaults
+    image: nginx:alpine
+    depends_on: ["api", "app"]
+    ports: ["80:80"]
+    volumes:
+      - "./services/nginx/templates:/etc/nginx/templates"
+
+  api:
+    <<: *service_defaults
+    <<: *node_defaults
+    depends_on: ["postgres"]
+    secrets:
+      - strapi_database_username
+      - strapi_database_password
+    ports: ["1337"]
+    volumes:
+      - "./scripts/node:/var/scripts"
+      - "./projects/api:/home/node/app"
+    environment:
+      DATABASE_HOST: "postgres"
+      DATABASE_PORT: 5432
+      DATABASE_NAME: "strapi_commerce"
+
+  app:
+    <<: *service_defaults
+    <<: *node_defaults
+    depends_on: ["api"]
+    ports: ["4200"]
+    volumes:
+      - "./scripts/node:/var/scripts"
+      - "./projects/app:/home/node/app"
